@@ -1,0 +1,160 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+<p>The four graphs that were formulated offer valuable insights into the association between GDP per capita and diverse metrics that are relevant to the well-being of children. The aforementioned correlation between societal progress and the health and happiness of children is depicted through several graphs, facilitating comprehension of the intricate relationship.</p> 
+
+<p>The initial graph depicts a cartographic representation of the relationship between GDP per capita and child well-being indices, showcasing the spatial distribution of these metrics across diverse nations through the use of distinct hues. The cartographic representation depicts the substantial disparities among countries with regards to their Gross Domestic Product per capita and the standard of living for minors. Certain countries, particularly in Africa and Asia, exhibit notably low levels of GDP per capita and high levels of child deprivation. In contrast, other countries, particularly those in Europe and North America, demonstrate significantly higher levels of GDP per capita and lower levels of child deprivation. The observed discrepancy can be ascribed to the divergent priorities of nations, with some emphasizing economic advancement and others prioritizing the amelioration of child poverty. The graphical representation illustrates a positive correlation between a nation's GDP per capita and the degree of welfare encountered by its juvenile population. Generally speaking, countries with higher GDP per capita tend to exhibit elevated levels of child well-being indices.</p>
+
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(maps)
+library(readr)
+
+# load data
+indicator1 <- read_csv("unicef_indicator_1.csv")
+indicator2 <- read_csv("unicef_indicator_2.csv")
+metadata <- read_csv("unicef_metadata.csv")
+
+# select relevant indicators
+metadata_select <- metadata %>%
+  select(country, year, `GDP per capita (constant 2015 US$)`) %>%
+  filter(!is.na(`GDP per capita (constant 2015 US$)`))
+
+indicator1_select <- indicator1 %>%
+  select(country, obs_value, time_period) 
+
+# merge data
+data <- left_join(metadata_select, indicator1_select, by = "country") %>%
+  select(country, `GDP per capita (constant 2015 US$)`, obs_value) %>%
+  drop_na() %>%
+  group_by(country) %>%
+  slice_tail(n = 1)
+
+names(data)
+# create map plot
+map_world <- map_data("world")
+
+ggplot(data = data, aes(map_id = country)) +
+  geom_map(aes(fill = obs_value, map_id = country), map = map_world, color = "white", size = 0.2) +
+  scale_fill_gradient(low = "#fee5d9", high = "#a50f15") +
+  expand_limits(x = map_world$long, y = map_world$lat) +
+  labs(title = "Analysis of GDP Per Capita and Children Well-being",
+       fill = "Percentage children suffering at least five deprivation",
+       x = "", y = "") +
+  theme_void() +
+  theme(plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+        legend.position = "bottom",
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10))
+
+
+
+
+
+```
+<p>The second graph, presented in the form of a bar chart, offers additional evidence regarding the correlation between societal advancement and the welfare of children by means of a comparison between life expectancy and gross domestic product (GDP) per capita. The figure's statistics indicate a discernible correlation between a country's GDP per capita and its mean life expectancy. To clarify, nations with a greater Gross Domestic Product per individual typically exhibit extended lifespans. As per the preceding argument, the growth of the economy holds the potential to exert a substantial influence on the psychological and physiological well-being of the youth by augmenting their accessibility to superior medical care, nourishment, and other indispensable amenities.</p>
+
+```{r}
+
+# select relevant indicators
+metadata_select <- metadata %>%
+  select(country, year, `GDP per capita (constant 2015 US$)`, `Life expectancy at birth, total (years)`) %>%
+  filter(!is.na(`GDP per capita (constant 2015 US$)`) & !is.na(`Life expectancy at birth, total (years)`))
+
+metadata_select <- metadata_select %>%
+  group_by(country) %>%
+  slice_tail(n = 1)
+
+# create bar chart
+ggplot(data = metadata_select, aes(x = country)) +
+  geom_bar(aes(y = `GDP per capita (constant 2015 US$)`, fill = "GDP per capita"), stat = "identity" ) +
+  geom_bar(aes(y = `Life expectancy at birth, total (years)`, fill = "Life expectancy"), stat = "identity") +
+  scale_fill_manual(values = c("GDP per capita" = "#fee5d9", "Life expectancy" = "#a50f15")) +
+  coord_flip() +
+  labs(title = "Comparison of life expectancy and GDP per capita",
+       x = "Count", y = "Country") +
+  theme_bw() +
+  theme(plot.title = element_text(size = 16, face = "bold", hjust = 1),
+        legend.position = "bottom",
+        legend.title = element_blank(),
+        legend.text = element_text(size = 12),
+        axis.text.y = element_text(size = 5),
+        axis.title.y = element_text(size = 12))
+
+
+```
+
+<p>The third graph portrays the correlation between GDP per capita and the observed value of malaria through a scatterplot that includes a linear regression line. The scatterplot depicts a negative correlation between GDP per capita and the incidence of malaria, whereby countries with higher GDP per capita tend to exhibit lower malaria rates. The evidence suggests that heightened economic activity can significantly impact the reduction of malaria prevalence and enhance the health outcomes of children.</p>
+
+```{r}
+# select relevant indicators
+names(indicator1)
+indicator_select <- indicator1 %>%
+  select(country, obs_value) %>%
+  filter(!is.na(obs_value))
+
+metadata_select <- metadata %>%
+  select(country, year, `GDP per capita (constant 2015 US$)`) %>%
+  filter(!is.na(`GDP per capita (constant 2015 US$)`))
+
+metadata_select <- metadata_select %>%
+  group_by(country) %>%
+  slice_tail(n = 1)
+
+# join data frames
+data <- left_join(indicator_select, metadata_select, by = "country")
+
+# create scatterplot with regression line
+ggplot(data = data, aes(x = `GDP per capita (constant 2015 US$)`, y = obs_value)) +
+  geom_point(alpha = 0.7, size = 3) +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(title = "Relationship between GDP per capita and obs value of malaria",
+       x = "GDP per capita (constant 2015 US$)", y = "Obs value of malaria") +
+  theme_bw() +
+  theme(plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+        axis.title.x = element_text(size = 12),
+        axis.title.y = element_text(size = 12),
+        axis.text.x = element_text(size = 10),
+        axis.text.y = element_text(size = 10))
+
+```
+
+<p>The time-series chart depicted in the fourth graph displays the correlation between GDP per capita and the observed value of deprivation, thereby highlighting the temporal fluctuations in the indicators of child well-being. Nations that have experienced sustained economic growth have typically observed enhancements in indices measuring child well-being over the course of time. Nonetheless, the illustration also indicates that enhancements in the welfare of juveniles are not inevitably linked to economic expansion. The illustration presented suggests that factors beyond the immediate subject matter, such as social policies and investments in education and health, may exert a significant influence on the overall welfare of children.</p>
+
+```{r}
+# select relevant indicators
+indicator_select <- unicef_indicator_1 %>%
+  select(country, time_period, obs_value) %>%
+  filter(!is.na(obs_value))
+
+metadata_select <- metadata %>%
+  select(country, year, `GDP per capita (constant 2015 US$)`) %>%
+  filter(!is.na(`GDP per capita (constant 2015 US$)`))
+
+metadata_select <- metadata_select %>%
+  group_by(country) %>%
+  slice_tail(n = 1)
+
+# join data frames
+data <- left_join(indicator_select, metadata_select, by = "country")
+
+# create time-series chart
+ggplot(data = data, aes(x = time_period, y = obs_value)) +
+  geom_line(aes(color = `GDP per capita (constant 2015 US$)`), alpha = 0.7) +
+  scale_color_gradientn(colors = c("red", "blue")) +
+  labs(title = "Relationship between GDP per capita and obs value of deprivation",
+       x = "Time period", y = "Obs value of deprivation") +
+  theme_bw() +
+  theme(plot.title = element_text(size = 16, face = "bold", hjust = 0.1),
+        axis.title.x = element_text(size = 12),
+        axis.title.y = element_text(size = 12),
+        axis.text.x = element_text(size = 10),
+        axis.text.y = element_text(size = 10))
+
+```
+
+<p>Taken collectively, these four graphs offer a comprehensive depiction of the intricate correlation between economic expansion and the well-being and contentment of children. Nevertheless, research indicates that additional variables, such as social policies and allocations towards education and healthcare, hold equal significance in enhancing the welfare of children. The authors emphasize the significance of economic growth in enhancing the general health status of children and mitigating the extent of child deprivation. The aforementioned discoveries hold great significance as policymakers must achieve a harmonious equilibrium between the imperative for economic advancement and the imperative to safeguard and augment the well-being of children. The significance of these findings is noteworthy. By considering the aforementioned factors, policymakers can potentially develop legislation and initiatives that enhance economic growth and promote the welfare of children, thereby securing a more promising future for children globally.</p>
